@@ -6,18 +6,24 @@ if (!uri) {
   throw new Error("Please add MONGO_URI to .env.local");
 }
 
-let client: MongoClient;
 let clientPromise: Promise<MongoClient>;
 
+declare global {
+  var _mongoClientPromise: Promise<MongoClient> | undefined;
+}
+
 if (process.env.NODE_ENV === "development") {
-  if (!(global as any)._mongoClientPromise) {
-    client = new MongoClient(uri);
-    (global as any)._mongoClientPromise = client.connect();
+  if (!global._mongoClientPromise) {
+    const client = new MongoClient(uri);
+    global._mongoClientPromise = client.connect();
   }
-  clientPromise = (global as any)._mongoClientPromise;
+  clientPromise = global._mongoClientPromise!;
 } else {
-  client = new MongoClient(uri);
+  const client = new MongoClient(uri);
   clientPromise = client.connect();
 }
 
-export default clientPromise;
+export async function getDb() {
+  const client = await clientPromise;
+  return client.db();
+}
